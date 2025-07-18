@@ -53,21 +53,30 @@ aws eks update-kubeconfig --name eks-nebulance --region eu-central-1
 ### 3. Install AWS Load Balancer Controller
 
 ```bash
+# Set your AWS account ID as a variable
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+
+# Download the IAM policy document for AWS Load Balancer Controller
+curl -o iam_policy_lb.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.7/docs/install/iam_policy.json
+
 # Create IAM policy for AWS Load Balancer Controller
+# This policy allows the controller to make necessary AWS API calls to manage load balancers
 aws iam create-policy \
     --policy-name AWSLoadBalancerControllerIAMPolicy \
     --policy-document file://iam_policy_lb.json
 
-# Create service account
+# Create service account with IAM role (IRSA - IAM Roles for Service Accounts)
+# This links the Kubernetes service account to the AWS IAM role, enabling the controller to use AWS permissions
 eksctl create iamserviceaccount \
   --cluster=eks-nebulance \
   --namespace=kube-system \
   --name=aws-load-balancer-controller \
-  --attach-policy-arn=arn:aws:iam::ACCOUNT_ID:policy/AWSLoadBalancerControllerIAMPolicy \
+  --attach-policy-arn=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
   --override-existing-serviceaccounts \
   --approve
 
 # Install AWS Load Balancer Controller using Helm
+# This deploys the controller that will manage AWS ALB/NLB resources based on Kubernetes Ingress/Service resources
 helm repo add eks https://aws.github.io/eks-charts
 helm repo update
 helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
@@ -77,30 +86,37 @@ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
   --set serviceAccount.name=aws-load-balancer-controller
 ```
 
-### 4. Install EBS CSI Driver
+### 4. Install EBS CSI Driver as an EKS Add-on
 
 ```bash
-# Create IAM policy for EBS CSI Driver
-aws iam create-policy \
-    --policy-name AmazonEBSCSIDriverPolicy \
-    --policy-document file://iam_policy_ebs_csi.json
+# Set your AWS account ID as a variable
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
 
-# Create service account
+# Enable the EBS CSI Driver as an EKS add-on
+# This is the recommended way to install the driver as AWS manages the lifecycle
+aws eks create-addon \
+  --cluster-name eks-nebulance \
+  --addon-name aws-ebs-csi-driver \
+  --service-account-role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole \
+  --region eu-central-1
+
+# Verify the add-on installation
+aws eks describe-addon \
+  --cluster-name eks-nebulance \
+  --addon-name aws-ebs-csi-driver \
+  --region eu-central-1
+
+# Note: The IAM role 'AmazonEKS_EBS_CSI_DriverRole' should be created in advance with the
+# required permissions. You can create it using the AWS Management Console or with the
+# following eksctl command:
+
 eksctl create iamserviceaccount \
   --name ebs-csi-controller-sa \
   --namespace kube-system \
   --cluster eks-nebulance \
-  --attach-policy-arn arn:aws:iam::ACCOUNT_ID:policy/AmazonEBSCSIDriverPolicy \
-  --approve \
-  --override-existing-serviceaccounts
-
-# Install EBS CSI Driver
-helm repo add aws-ebs-csi-driver https://kubernetes-sigs.github.io/aws-ebs-csi-driver
-helm repo update
-helm install aws-ebs-csi-driver aws-ebs-csi-driver/aws-ebs-csi-driver \
-  --namespace kube-system \
-  --set controller.serviceAccount.create=false \
-  --set controller.serviceAccount.name=ebs-csi-controller-sa
+  --role-name AmazonEKS_EBS_CSI_DriverRole \
+  --attach-policy-arn arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy \
+  --approve
 ```
 
 ### 5. Create Storage Classes
@@ -123,27 +139,54 @@ EOF
 ### 6. Set Up External Secrets Operator
 
 ```bash
+# Set your AWS account ID as a variable
+AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
+
+# Download the IAM policy document for External Secrets Operator
+# This policy allows access to AWS Secrets Manager
+cat > iam_policy_external_secrets.json << EOF
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:GetResourcePolicy",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:ListSecretVersionIds"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
+EOF
+
 # Create IAM policy for External Secrets Operator
+# This policy allows the operator to read secrets from AWS Secrets Manager
 aws iam create-policy \
     --policy-name ExternalSecretsOperatorPolicy \
     --policy-document file://iam_policy_external_secrets.json
 
 # Create OIDC provider for the cluster
+# This enables IAM roles for service accounts (IRSA) in the cluster
 eksctl utils associate-iam-oidc-provider \
     --region eu-central-1 \
     --cluster eks-nebulance \
     --approve
 
 # Create IAM role for External Secrets
+# This creates a service account with permissions to access AWS Secrets Manager
 eksctl create iamserviceaccount \
   --name external-secrets-sa \
   --namespace nebulance \
   --cluster eks-nebulance \
-  --attach-policy-arn arn:aws:iam::ACCOUNT_ID:policy/ExternalSecretsOperatorPolicy \
+  --attach-policy-arn arn:aws:iam::${AWS_ACCOUNT_ID}:policy/ExternalSecretsOperatorPolicy \
   --approve \
   --override-existing-serviceaccounts
 
 # Install External Secrets Operator
+# This deploys the operator that will sync AWS Secrets Manager secrets to Kubernetes secrets
 helm repo add external-secrets https://charts.external-secrets.io
 helm repo update
 helm install external-secrets external-secrets/external-secrets \
