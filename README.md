@@ -24,8 +24,8 @@ This project consists of a complete 3-tier application:
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/nebulance-eks.git
-cd nebulance-eks/terraform
+git clone https://github.com/sheenandeh/Enterprise-App.git
+cd Enterprise-App/terraform
 
 # Initialize Terraform
 terraform init
