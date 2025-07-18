@@ -26,13 +26,16 @@ This project consists of a complete 3-tier application:
 # Clone the repository
 git clone https://github.com/sheenandeh/Enterprise-App.git
 cd Enterprise-App/terraform
-
+```
+```bash
 # Initialize Terraform
 terraform init
-
+```
+```bash
 # Plan the deployment
 terraform plan -out=tfplan
-
+```
+```bash
 # Apply the configuration
 terraform apply tfplan
 ```
@@ -55,16 +58,19 @@ aws eks update-kubeconfig --name eks-nebulance --region eu-central-1
 ```bash
 # Set your AWS account ID as a variable
 AWS_ACCOUNT_ID=$(aws sts get-caller-identity --query "Account" --output text)
-
+```
+```bash
 # Download the IAM policy document for AWS Load Balancer Controller
 curl -o iam_policy_lb.json https://raw.githubusercontent.com/kubernetes-sigs/aws-load-balancer-controller/v2.4.7/docs/install/iam_policy.json
-
+```
+```bash
 # Create IAM policy for AWS Load Balancer Controller
 # This policy allows the controller to make necessary AWS API calls to manage load balancers
 aws iam create-policy \
     --policy-name AWSLoadBalancerControllerIAMPolicy \
     --policy-document file://iam_policy_lb.json
-
+```
+```bash
 # Create service account with IAM role (IRSA - IAM Roles for Service Accounts)
 # This links the Kubernetes service account to the AWS IAM role, enabling the controller to use AWS permissions
 eksctl create iamserviceaccount \
@@ -74,7 +80,8 @@ eksctl create iamserviceaccount \
   --attach-policy-arn=arn:aws:iam::${AWS_ACCOUNT_ID}:policy/AWSLoadBalancerControllerIAMPolicy \
   --override-existing-serviceaccounts \
   --approve
-
+```
+```bash
 # Install AWS Load Balancer Controller using Helm
 # This deploys the controller that will manage AWS ALB/NLB resources based on Kubernetes Ingress/Service resources
 helm repo add eks https://aws.github.io/eks-charts
@@ -99,13 +106,15 @@ aws eks create-addon \
   --addon-name aws-ebs-csi-driver \
   --service-account-role-arn arn:aws:iam::${AWS_ACCOUNT_ID}:role/AmazonEKS_EBS_CSI_DriverRole \
   --region eu-central-1
-
+```
+```bash
 # Verify the add-on installation
 aws eks describe-addon \
   --cluster-name eks-nebulance \
   --addon-name aws-ebs-csi-driver \
   --region eu-central-1
-
+```
+```bash
 # Note: The IAM role 'AmazonEKS_EBS_CSI_DriverRole' should be created in advance with the
 # required permissions. You can create it using the AWS Management Console or with the
 # following eksctl command:
@@ -161,13 +170,15 @@ cat > iam_policy_external_secrets.json << EOF
   ]
 }
 EOF
-
+```
+```bash
 # Create IAM policy for External Secrets Operator
 # This policy allows the operator to read secrets from AWS Secrets Manager
 aws iam create-policy \
     --policy-name ExternalSecretsOperatorPolicy \
     --policy-document file://iam_policy_external_secrets.json
-
+```
+```bash
 # Create OIDC provider for the cluster
 # This enables IAM roles for service accounts (IRSA) in the cluster
 eksctl utils associate-iam-oidc-provider \
@@ -175,6 +186,8 @@ eksctl utils associate-iam-oidc-provider \
     --cluster eks-nebulance \
     --approve
 
+```
+```bash
 # Create IAM role for External Secrets
 # This creates a service account with permissions to access AWS Secrets Manager
 eksctl create iamserviceaccount \
@@ -185,6 +198,8 @@ eksctl create iamserviceaccount \
   --approve \
   --override-existing-serviceaccounts
 
+```
+```bash
 # Install External Secrets Operator
 # This deploys the operator that will sync AWS Secrets Manager secrets to Kubernetes secrets
 helm repo add external-secrets https://charts.external-secrets.io
@@ -193,7 +208,9 @@ helm install external-secrets external-secrets/external-secrets \
   --namespace external-secrets \
   --create-namespace \
   --set installCRDs=true
+
 ```
+
 
 ### 7. Create Secrets in AWS Secrets Manager
 
@@ -210,8 +227,9 @@ echo "JWT_SECRET: $JWT_SECRET"
 echo "API_KEY: $API_KEY"
 echo "DB_PASSWORD: $DB_PASSWORD"
 echo ""
-
+```
 # Create database secrets
+```bash
 aws secretsmanager create-secret \
   --name "eks-app/database" \
   --description "Database credentials for EKS application" \
@@ -221,8 +239,9 @@ aws secretsmanager create-secret \
     \"POSTGRES_DB\":\"appdb\"
   }" \
   --region eu-central-1
-
+```
 # Create application secrets
+```bash
 aws secretsmanager create-secret \
   --name "eks-app/application" \
   --description "Application secrets for EKS application" \
@@ -232,10 +251,10 @@ aws secretsmanager create-secret \
     \"NODE_ENV\":\"production\"
   }" \
   --region eu-central-1
-
+```
 echo "Secrets created in AWS Secrets Manager"
 echo "Verifying secrets..."
-
+```bash
 # Verify secrets were created
 aws secretsmanager list-secrets --region eu-central-1 --query 'SecretList[?contains(Name, `eks-app`)].{Name:Name,Description:Description}'
 ```
@@ -247,8 +266,9 @@ aws secretsmanager list-secrets --region eu-central-1 --query 'SecretList[?conta
 cd frontend
 docker build -t sheenandeh333/eks-app-frontend:1.0.0 .
 docker push sheenandeh333/eks-app-frontend:1.0.0
-
+```
 # Build and push backend image
+```bash
 cd ../backend
 docker build -t sheenandeh333/eks-app-backend:1.0.0 .
 docker push sheenandeh333/eks-app-backend:1.0.0
@@ -259,8 +279,10 @@ docker push sheenandeh333/eks-app-backend:1.0.0
 ```bash
 # Create namespace
 kubectl create namespace nebulance
+```
 
 # Deploy the application
+```bash
 helm upgrade --install nebulance ./helm-charts \
   --namespace nebulance \
   --wait \
