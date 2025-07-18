@@ -1,0 +1,161 @@
+# External Secrets configuration
+externalSecrets:
+  enabled: true
+  secretStore:
+    name: aws-secretstore
+    provider:
+      aws:
+        region: eu-central-1
+        auth:
+          jwt:
+            serviceAccountRef:
+              name: external-secrets-sa
+
+  # Define the secrets to fetch from AWS Secrets Manager
+  secrets:
+    - name: database-secret
+      secretStoreRef:
+        name: aws-secretstore
+        kind: SecretStore
+      target:
+        name: database-credentials
+      data:
+        - secretKey: POSTGRES_USER
+          remoteRef:
+            key: eksapp/database
+            property: POSTGRES_USER
+        - secretKey: POSTGRES_PASSWORD
+          remoteRef:
+            key: eksapp/database
+            property: POSTGRES_PASSWORD
+        - secretKey: POSTGRES_DB
+          remoteRef:
+            key: eksapp/database
+            property: POSTGRES_DB
+
+    - name: application-secret
+      secretStoreRef:
+        name: aws-secretstore
+        kind: SecretStore
+      target:
+        name: application-credentials
+      data:
+        - secretKey: JWT_SECRET
+          remoteRef:
+            key: eksapp/application
+            property: JWT_SECRET
+        - secretKey: API_KEY
+          remoteRef:
+            key: eksapp/application
+            property: API_KEY
+        - secretKey: NODE_ENV
+          remoteRef:
+            key: eksapp/application
+            property: NODE_ENV
+
+# Service Account configuration
+serviceAccount:
+  create: true
+  name: external-secrets-sa
+  roleArn: "arn:aws:iam::062823296302:role/eks-external-secrets-role"
+  annotations:
+    eks.amazonaws.com/role-arn: "arn:aws:iam::062823296302:role/eks-external-secrets-role"
+
+# Frontend configuration
+frontend:
+  name: frontend
+  replicaCount: 2
+  image:
+    repository: sheenandeh333/eks-app-frontend
+    tag: "1.0.0"
+    pullPolicy: Always
+  service:
+    type: LoadBalancer
+    port: 80
+    targetPort: 8080
+    annotations:
+      service.beta.kubernetes.io/aws-load-balancer-type: nlb
+      service.beta.kubernetes.io/aws-load-balancer-cross-zone-load-balancing-enabled: "true"
+  env:
+    apiUrl: "http://backend:3000"
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+  autoscaling:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPUUtilizationPercentage: 80
+
+# Backend configuration
+backend:
+  name: backend
+  replicaCount: 3
+  image:
+    repository: sheenandeh333/eks-app-backend
+    tag: "1.0.0"
+    pullPolicy: Always
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  resources:
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+  autoscaling:
+    enabled: true
+    minReplicas: 3
+    maxReplicas: 10
+    targetCPUUtilizationPercentage: 80
+
+# Database configuration
+database:
+  name: postgres
+  image:
+    repository: postgres
+    tag: "14"
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 5432
+    targetPort: 5432
+  resources:
+    limits:
+      cpu: "1000m"
+      memory: "1Gi"
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+  persistence:
+    enabled: true
+    accessMode: ReadWriteOnce
+    storageClass: "gp2"
+    size: 10Gi
+  livenessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - $(POSTGRES_USER)
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readinessProbe:
+    exec:
+      command:
+        - pg_isready
+        - -U
+        - $(POSTGRES_USER)
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+# Autoscaling configuration
+autoscaling:
+  enabled: true

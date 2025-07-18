@@ -1,0 +1,67 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.database.name }}
+  labels:
+    app: {{ .Values.database.name }}
+spec:
+  serviceName: {{ .Values.database.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.database.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.database.name }}
+    spec:
+      securityContext:
+        fsGroup: 999
+      containers:
+        - name: {{ .Values.database.name }}
+          image: "{{ .Values.database.image.repository }}:{{ .Values.database.image.tag }}"
+          imagePullPolicy: {{ .Values.database.image.pullPolicy }}
+          ports:
+            - name: postgres
+              containerPort: 5432
+              protocol: TCP
+          livenessProbe:
+            {{- toYaml .Values.database.livenessProbe | nindent 12 }}
+          readinessProbe:
+            {{- toYaml .Values.database.readinessProbe | nindent 12 }}
+          resources:
+            {{- toYaml .Values.database.resources | nindent 12 }}
+          env:
+            {{- if .Values.externalSecrets.enabled }}
+            - name: POSTGRES_USER
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: POSTGRES_PASSWORD
+            - name: POSTGRES_DB
+              valueFrom:
+                secretKeyRef:
+                  name: database-credentials
+                  key: POSTGRES_DB
+            {{- end }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+              subPath: postgres
+  {{- if .Values.database.persistence.enabled }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - {{ .Values.database.persistence.accessMode }}
+        storageClassName: gp3
+        resources:
+          requests:
+            storage: {{ .Values.database.persistence.size }}
+  {{- end }}

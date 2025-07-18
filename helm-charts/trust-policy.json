@@ -1,0 +1,17 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Principal": {
+        "Federated": "arn:aws:iam::062823296302:oidc-provider/oidc.eks.eu-central-1.amazonaws.com/id/D7B96B0C64C402CEADEBF562ADEA38FE"
+      },
+      "Action": "sts:AssumeRoleWithWebIdentity",
+      "Condition": {
+        "StringEquals": {
+          "oidc.eks.eu-central-1.amazonaws.com/id/D7B96B0C64C402CEADEBF562ADEA38FE:sub": "system:serviceaccount:nebulance:external-secrets-sa"
+        }
+      }
+    }
+  ]
+}

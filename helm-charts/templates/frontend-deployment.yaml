@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.frontend.name }}
+  labels:
+    app: {{ .Values.frontend.name }}
+spec:
+  replicas: {{ .Values.frontend.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.frontend.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.frontend.name }}
+    spec:
+      securityContext:
+        fsGroup: 1000
+        runAsUser: 0
+      containers:
+      - name: frontend
+        image: {{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}
+        imagePullPolicy: {{ .Values.frontend.image.pullPolicy }}
+        env:
+        - name: REACT_APP_API_URL
+          value: {{ .Values.frontend.env.apiUrl }}
+        ports:
+        - containerPort: 8080
+        resources:
+          limits:
+            cpu: {{ .Values.frontend.resources.limits.cpu }}
+            memory: {{ .Values.frontend.resources.limits.memory }}
+          requests:
+            cpu: {{ .Values.frontend.resources.requests.cpu }}
+            memory: {{ .Values.frontend.resources.requests.memory }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 5
