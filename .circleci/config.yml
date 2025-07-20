@@ -90,13 +90,17 @@ jobs:
 
   deploy-to-eks:
     docker:
-      - image: cimg/python:3.10
+      - image: cimg/aws:2023.06
     steps:
       - checkout
       - kubernetes/install-kubectl
       - run:
           name: Update kubeconfig
           command: aws eks update-kubeconfig --name eks-nebulance --region eu-central-1
+      - run:
+          name: Install Helm
+          command: |
+            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
       - run:
           name: Deploy using Helm
           command: |
