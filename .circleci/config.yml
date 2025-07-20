@@ -49,16 +49,10 @@ jobs:
           name: Update kubeconfig
           command: aws eks update-kubeconfig --name eks-nebulance --region eu-central-1
       - run:
-          name: Install Helm
-          command: |
-            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
-      - run:
           name: Deploy using Helm
           command: |
             helm upgrade --install nebulance ./helm-charts \
-              --namespace nebulance \
-              --wait \
-              --timeout 10m
+              --namespace nebulance 
 
 workflows:
   version: 2
