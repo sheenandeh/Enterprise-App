@@ -81,10 +81,11 @@ jobs:
             sed -i "s|repository: sheenandeh333/eks-app-backend.*|repository: sheenandeh333/eks-app-backend\n    tag: \"${BACKEND_TAG}\"|" helm-charts/values.yaml
             
             echo "Committing changes..."
-            git config --global user.email "ci@example.com"
-            git config --global user.name "CircleCI"
+            git config --global user.email "$GIT_EMAIL"
+            git config --global user.name "$GIT_USERNAME"
             git add helm-charts/values.yaml
             git commit -m "Update image tags: FE:${FRONTEND_TAG}, BE:${BACKEND_TAG}"
+            git remote set-url origin https://${GH_TOKEN}@github.com/sheenandeh/Enterprise-App.git
             git push origin main
 
   deploy-to-eks:
