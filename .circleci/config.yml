@@ -19,7 +19,7 @@ jobs:
             FRONTEND_TAG="1.0.0-${TIMESTAMP}"
             BACKEND_TAG="1.0.0-${TIMESTAMP}"
 
-            echo "🛠 Building and pushing frontend..."
+            echo "🛠 Building and pushing frontend image..."
             cd frontend
             docker build -t sheenandeh333/eks-app-frontend:${FRONTEND_TAG} .
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
