@@ -13,27 +13,14 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - attach_workspace:
-          at: /tmp
       - run:
           name: Build and push frontend image
           command: |
-            TIMESTAMP=$(date +%Y%m%d%H%M%S)
-            FRONTEND_TAG="1.0.0-${TIMESTAMP}"
-            
             echo "Building frontend image..."
             cd frontend
-            docker build -t sheenandeh333/eks-app-frontend:${FRONTEND_TAG} .
+            docker build -t sheenandeh333/eks-app-frontend:latest .
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker push sheenandeh333/eks-app-frontend:${FRONTEND_TAG}
-            
-            # Save tag for later jobs
-            mkdir -p /tmp/workspace
-            echo "${FRONTEND_TAG}" > /tmp/workspace/frontend_tag.txt
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - workspace
+            docker push sheenandeh333/eks-app-frontend:latest
 
   build-push-backend:
     docker:
@@ -41,52 +28,16 @@ jobs:
     steps:
       - checkout
       - setup_remote_docker
-      - attach_workspace:
-          at: /tmp
       - run:
           name: Build and push backend image
           command: |
-            TIMESTAMP=$(date +%Y%m%d%H%M%S)
-            BACKEND_TAG="1.0.0-${TIMESTAMP}"
-            
             echo "Building backend image..."
             cd backend
-            docker build -t sheenandeh333/eks-app-backend:${BACKEND_TAG} .
+            docker build -t sheenandeh333/eks-app-backend:latest .
             echo $DOCKERHUB_PASSWORD | docker login -u $DOCKERHUB_USERNAME --password-stdin
-            docker push sheenandeh333/eks-app-backend:${BACKEND_TAG}
-            
-            # Save tag for later jobs
-            mkdir -p /tmp/workspace
-            echo "${BACKEND_TAG}" > /tmp/workspace/backend_tag.txt
-      - persist_to_workspace:
-          root: /tmp
-          paths:
-            - workspace
+            docker push sheenandeh333/eks-app-backend:latest
 
-  update-helm-values:
-    docker:
-      - image: cimg/base:2023.03
-    steps:
-      - checkout
-      - attach_workspace:
-          at: /tmp
-      - run:
-          name: Update Helm values and commit changes
-          command: |
-            FRONTEND_TAG=$(cat /tmp/workspace/frontend_tag.txt)
-            BACKEND_TAG=$(cat /tmp/workspace/backend_tag.txt)
-            
-            echo "Updating Helm values.yaml..."
-            sed -i "s|tag: \".*\"|tag: \"${FRONTEND_TAG}\"|" helm-charts/values.yaml
-            sed -i "s|repository: sheenandeh333/eks-app-backend.*|repository: sheenandeh333/eks-app-backend\n    tag: \"${BACKEND_TAG}\"|" helm-charts/values.yaml
-            
-            echo "Committing changes..."
-            git config --global user.email "$GIT_EMAIL"
-            git config --global user.name "$GIT_USERNAME"
-            git add helm-charts/values.yaml
-            git commit -m "Update image tags: FE:${FRONTEND_TAG}, BE:${BACKEND_TAG}"
-            git remote set-url origin https://${GH_TOKEN}@github.com/sheenandeh/Enterprise-App.git
-            git push origin main
+
 
   deploy-to-eks:
     docker:
@@ -121,16 +72,10 @@ workflows:
           filters:
             branches:
               only: main
-      - update-helm-values:
+      - deploy-to-eks:
           requires:
             - build-push-frontend
             - build-push-backend
-          filters:
-            branches:
-              only: main
-      - deploy-to-eks:
-          requires:
-            - update-helm-values
           filters:
             branches:
               only: main
