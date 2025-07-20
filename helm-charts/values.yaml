@@ -67,7 +67,7 @@ frontend:
   replicaCount: 2
   image:
     repository: sheenandeh333/eks-app-frontend
-    tag: "1.0.0-20250720231413"
+    tag: "1.0.0-20250720231545"
     pullPolicy: Always
   service:
     type: LoadBalancer
@@ -97,19 +97,20 @@ backend:
   replicaCount: 3
   image:
     repository: sheenandeh333/eks-app-backend
-    tag: "1.0.0-20250720231420"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
-    tag: "1.0.0-20250720231413"
+    tag: "1.0.0-20250720231544"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
+    tag: "1.0.0-20250720231545"
     pullPolicy: Always
   service:
     type: ClusterIP
@@ -133,7 +134,7 @@ database:
   name: postgres
   image:
     repository: postgres
-    tag: "1.0.0-20250720231413"
+    tag: "1.0.0-20250720231545"
     pullPolicy: IfNotPresent
   service:
     type: ClusterIP
