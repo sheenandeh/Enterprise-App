@@ -91,7 +91,7 @@ frontend:
     maxReplicas: 5
     targetCPUUtilizationPercentage: 80
 
-# Backend configuration
+# Backend configuration updated
 backend:
   name: backend
   replicaCount: 3
